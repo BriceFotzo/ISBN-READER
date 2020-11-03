@@ -1,0 +1,17 @@
+bokeh
+imagesize==1.2.0
+ipython-genutils==0.2.0
+matplotlib
+nltk
+numpy==1.18.5
+pandas
+path==13.1.0
+qtconsole
+QtPy==1.9.0
+scikit-image==0.16.2
+scikit-learn
+scipy
+seaborn==0.10.1
+imutils
+opencv-python
+
