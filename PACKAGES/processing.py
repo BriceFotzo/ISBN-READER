@@ -76,5 +76,5 @@ def draw_countours(image,out,cx,cy):
         
         #cv2.rectangle(image,(x,y),(x+w,y+h),(0,0,255),1)
         cv2.drawContours(image, [box], -1, (0, 255, 0), 3)
-        cv2.imwrite("result/"+out+".jpg",image[y:y+h,x:x+w])
+        cv2.imwrite("isbn_zone/"+out+".jpg",image[y:y+h,x:x+w])
         return image

@@ -63,10 +63,10 @@ ap.add_argument('-s',
     default  = False,
     help     = 'set the flag in order to save the extracted images to the current folder')
 ap.add_argument('-r',
-    '--result',
+    '--isbn_zone',
     required = False,
     default  = 'scan',
-    help     = 'where to store the result')
+    help     = 'where to store the isbn_zone')
 args         = vars(ap.parse_args())
 
 
@@ -79,7 +79,7 @@ CLOSING_SIZE_X        = int(args['closingx'])
 CLOSING_SIZE_Y       = int(args['closingy'])
 bi                  = BasicImage(args['image'])
 multi=args['multi']
-output = str(args['result'])
+output = str(args['isbn_zone'])
 def auto_canny(image, sigma=0.33):
     # compute the median of the single channel pixel intensities
     v = np.median(image)
@@ -197,8 +197,8 @@ def scan():
 
             # save the image
             if args['save'] == True:
-                filename_color = 'output/'+output+'.jpg' 
-                filename_scan  = 'output/scan%03d_scan.jpg' % total
+                filename_color = 'books/'+output+'.jpg'
+                filename_scan  = 'books/scan%03d_scan.jpg' % total
                 BasicImage(warped).save(filename_color)
                 BasicImage(scan_warped).save(filename_scan)
 

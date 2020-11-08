@@ -83,7 +83,7 @@ def draw_countours(image, original, out, cx, cy, Rx, Ry):
         # x,y,w,h = cv2.boundingRect(cnt)
         imc = image.copy()
         cv2.drawContours(imc, [box], -1, (0, 255, 0), 3)
-        cv2.imwrite(data_dir + "result/" + out + ".jpg", original[y - 3:y + h + 5, x - 15:x + w + 5])
+        cv2.imwrite(data_dir + "isbn_zone/" + out + ".jpg", original[y - 3:y + h + 5, x - 15:x + w + 5])
         return imc
 
 

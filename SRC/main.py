@@ -1,93 +1,84 @@
-PROJECT_DIR="C:/Users/brice/Data_science_project"
-import cv2
-from imutils.perspective import four_point_transform
-from imutils import contours
-import imutils
 from matplotlib import pyplot as plt
-import numpy as np
-import os,sys
+import os
 import pandas as pd
 import shutil
 from PACKAGES.process import *
 from sklearn.svm import SVC
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import train_test_split
-from sklearn import datasets
-import collections
+
+PROJECT_DIR="C:/Users/brice/Data_science_project"
 data_dir=PROJECT_DIR+'/DATA/'
 training_dir=PROJECT_DIR+'/DATA/training_data/'
 
-#importation de l'image du livre
-im_to_split=cv2.imread(PROJECT_DIR+'/scan001_color.jpg')
+#read the back cover book's
+book_cover=cv2.imread(data_dir+'books/book0.jpg')
 
-#réduire la taille du livre(pour visualisation avec cv2.imshwo())
-im_r_to_split=resize(im_to_split,'down',8,8)[0]
-#rogner le livre(on ne récupère que la partie inférieure du livre)
-im_bottom_ori=im_r_to_split[7*int(im_r_to_split.shape[0]/10):,:]
-gray = cv2.cvtColor(im_bottom_ori, cv2.COLOR_BGR2GRAY)
-gray=cv2.fastNlMeansDenoising(gray,None,10,7,21)
-#application d'un filtre noir et blanc (Cette fonction affecte une valeur
-#aux pixel supérieur à une valeur seuille et 0 aux autres)
-threshes = cv2.adaptiveThreshold(gray,                         # image d'entrée
-                              255,                            # valeur affectée aux pixels supérieurs aux  seuils
-                              cv2.ADAPTIVE_THRESH_GAUSSIAN_C, # méthode fe filtrage à utiliser
-                              cv2.THRESH_BINARY_INV,# BINARY_INV permet d'avoir le fond en noir et et les objets en blanc
-                              11,       # taille de voisinage une utilisée pour calculer les valeurs seuils
-                              3)
-#détection des contours
-edgeds = auto_canny(gray)
-#définition d'un noyau de filtrage
-kernels = cv2.getStructuringElement(cv2.MORPH_RECT, (15,15))
-#remplissage des espaces vides pour relier des objets proches
-
-closeds = cv2.morphologyEx(edgeds, cv2.MORPH_CLOSE, kernels)
-closeds = cv2.dilate(closeds, None, iterations = 3)
-cv2.imshow('Basic Image',closeds)
+#reduce the image size in order to show it
+book_cover_reduced=resize(book_cover,'down',8,8)[0]
+#split the book(we're going to keep the bottom zone of the b)
+book_cover_bottom=book_cover_reduced[7*int(book_cover_reduced.shape[0]/10):,:]
+cv2.imshow('Basic Image',book_cover_bottom)
 cv2.waitKey(0)
-#augmenter la taille livre(pour visualisation avec cv2.imshow())
-im_bottom_r,Rx,Ry=resize(im_bottom_ori.copy(),'up',3,5)
-#identification et tracé de contours autour du code bar
-im_bottom_r=draw_countours(im_bottom_r,im_bottom_ori,'code_0',15,15,Rx,Ry)
+# we remove the color
+book_cover_gray = cv2.cvtColor(book_cover_bottom, cv2.COLOR_BGR2GRAY)
+book_cover_gray=cv2.fastNlMeansDenoising(book_cover_gray,None,10,7,21)
 
-digit_dir = data_dir+'/digits'
+
+#countours detection with the auto_canny
+edgeds = auto_canny(book_cover_gray)
+#defining a filtering kernel
+kernels = cv2.getStructuringElement(cv2.MORPH_RECT, (15,15))
+
+#filling the gaps to put together the pixels that are near to each other
+closed = cv2.morphologyEx(edgeds, cv2.MORPH_CLOSE, kernels)
+closed = cv2.dilate(closed, None, iterations = 3)
+cv2.imshow('Basic Image',closed)
+cv2.waitKey(0)
+
+#we increase the size of the image to capture the isbn number zone
+book_cover_bottom_increased,Rx,Ry=resize(book_cover_bottom.copy(),'up',3,5)
+#here we capture the isbn number zone and store it as a "jpg" image in a folder (isbn_zone)
+isbn_zone=draw_countours(book_cover_bottom_increased,book_cover_bottom,'code_zone',15,15,Rx,Ry)
+
+#we want to safely create a folder to store the isbn digits
+digit_dir = data_dir+'/isbn_digits'
 try:
      shutil.rmtree(digit_dir)
 except OSError as e:
     print("Error: %s : %s" % (digit_dir, e.strerror))
 
-top=cv2.imread(data_dir+"result/code_0.jpg")
-#agrandissement de l'image pour une meilleure détection
-top=cv2.resize(top,(top.shape[1]*4,top.shape[0]*2))
-# retrait des couleurs de l'image
-gray = cv2.cvtColor(top, cv2.COLOR_BGR2GRAY)
-#binarisation de l'image
-threshes =  cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+isbn_zone_image=cv2.imread(data_dir+"isbn_zone/code_zone.jpg")
+cv2.imshow('top',isbn_zone_image)
+cv2.waitKey(0)
+#we increase the isbn zone image in other to capture the digits
+isbn_zone_image=cv2.resize(isbn_zone_image,(isbn_zone_image.shape[1]*4,isbn_zone_image.shape[0]*2))
+isbn_zone_gray = cv2.cvtColor(isbn_zone_image, cv2.COLOR_BGR2GRAY)
+#we turn the image into binary so that we can catch the digits
+isbn_zone_binary =  cv2.adaptiveThreshold(isbn_zone_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
         cv2.THRESH_BINARY_INV,15,5)
-#tracé des contours
-edgeds = auto_canny(threshes)
-#détermination ndiu noyau de filtrage(pour le remplissage)
+#we draw the digits edges
+isbn_zone_edged = auto_canny(isbn_zone_binary)
 kernels = cv2.getStructuringElement(cv2.MORPH_RECT, (3,2))
-#remplissage des vide pour la liaison des pixels formants un même chiffre
-closeds = cv2.morphologyEx(threshes, cv2.MORPH_CLOSE, kernels,iterations=1)
+closed = cv2.morphologyEx(isbn_zone_binary, cv2.MORPH_CLOSE, kernels,iterations=1)
 
-#récupération des contours des objets trouvés
-cnts = cv2.findContours(closeds.copy(), cv2.RETR_EXTERNAL,
+#getting the countours
+cnts = cv2.findContours(closed.copy(), cv2.RETR_EXTERNAL,
 cv2.CHAIN_APPROX_SIMPLE)
 cnts = imutils.grab_contours(cnts)
-#récupération des aires des objets trouvés
+#getting the areas of all objects(we hope all digits) founded in the isbn_zone
 all_areas=[cv2.contourArea(rect) for rect in cnts]
-#Si on a moins de 13 objets alors on a pas nos 13 digits
-#Dans ce cas, on agrandit l'objet et afin de mieux identifier les objets
+#as the isbn length is 13, we don't want to get more of 13 objects
+#beside, it's possible to have have some noises
 if len(all_areas)<15:
-    gray=resize(gray,'up',2,3)[0]
-    top_,Rx,Ry=resize(top.copy(),'up',2,3)
-    threshes =  cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+    gray=resize(isbn_zone_gray,'up',2,3)[0]
+    isbn_zone_image_,Rx,Ry=resize(isbn_zone_image.copy(),'up',2,3)
+    isbn_zone_binary =  cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
         cv2.THRESH_BINARY_INV,255,30)
-    edgeds = auto_canny(threshes)
-    threshes= cv2.dilate(threshes, None, iterations = 1)
+    edgeds = auto_canny(isbn_zone_binary)
+    isbn_zone_binary = cv2.dilate(isbn_zone_binary, None, iterations = 1)
     kernels = cv2.getStructuringElement(cv2.MORPH_RECT, (4,7))
-    closeds = cv2.morphologyEx(threshes, cv2.MORPH_CROSS, kernels,iterations=2)
+    closeds = cv2.morphologyEx(isbn_zone_binary, cv2.MORPH_CROSS, kernels,iterations=2)
     cnts = cv2.findContours(closeds.copy(), cv2.RETR_EXTERNAL,
     cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
@@ -96,102 +87,111 @@ if len(all_areas)<15:
     min_p,max_p=0.1,2
 
 else :
-    top_,Rx,Ry=top.copy(),1,1
+    isbn_zone_image_,Rx,Ry=isbn_zone_image.copy(),1,1
     min_area,max_area=10,8000
     min_p,max_p=0.1,2
 areas_digits=pd.Series([],dtype='float64')
-contours_bon=[]
-#tris des countours correspondants à des chiffres de code barre (exemple: rejet d'un point/bruit apparaissant comme objet)
+good_contours=[]
+#As we maybe caught a noise instead of digit, we want reject it
 for i,cnt in enumerate(cnts):
-    #récupération des positions x,y, tailles et hauteurs
+    #we collect the positions, width and height of digits (objects caught respecting the previous rules)
     x,y,w,h = cv2.boundingRect(cnt)
-    if (w/h <= max_p) & (w/h >= min_p) & (h/top.shape[0] < 0.3) & (y > 2*h/3) & (w*h > min_area) & (w*h < max_area) :
-      contours_bon.append(cnt)
+    if (w/h <= max_p) & (w/h >= min_p) & (h/isbn_zone_image.shape[0] < 0.3) & (y > 2*h/3) & (w*h > min_area) & (w*h < max_area) :
+      good_contours.append(cnt)
 
-#récupération des 13 chiffres du code bar et sauvegarde daans une série de fichiers
-for i,cnt in enumerate(contours_bon[:13]):
+#Let's collect the digits as we just made selection
+for i,cnt in enumerate(good_contours[:13]):
     x,y,w,h = cv2.boundingRect(cnt)
     x_,y_,w_,h_=int(x/Rx),int(y/Ry),int(w/Rx),int(h/Ry)
-    #tracé des contours autour des digits sur la copie car nous voulons enregistrer l'image originale sans trait
-    cv2.rectangle(top_,(x,y),(x+w,y+h),(0,0,255),1)
-    #les fichiers sont nommés grâce à la position de chaque digit dur l'image
-    cv2.imwrite(data_dir+"digits/"+str(x)+".jpg",top[y_-3:y_+h_+3,x_-3:x_+w_+3])
+    #we draw the countours on a copy of isbnzone image
+    cv2.rectangle(isbn_zone_image_,(x,y),(x+w,y+h),(0,0,255),1)
+    #we save the digits naming them after theirs x positions
+    cv2.imwrite(data_dir+"isbn_digits/"+str(x)+".jpg",isbn_zone_image[y_-3:y_+h_+3,x_-3:x_+w_+3])
+#------------------------------------------MACHINE LEARNING-----------------------------------------#
+#In this part we'll compare 4 machine learning algorithms
 
-#importation des données
+#loading train data (more informations about these data on the Training data folder)
 images=np.loadtxt(training_dir+"/flattened_images.txt", np.float32)
 classes=np.loadtxt(training_dir+"/classifications.txt", np.float32)
-#transformer les caractères saisis au clavier en string
+#turn values in strings
 classes_str=np.array([chr(int(c)) for c in classes])
-#données à utiliser pour l'algorithme KNN de OpenCV
+#labels to use with KNN algorithm of OpenCV
 labels=classes.reshape((classes.size, 1))
-#données à utiliser pour le réseau de neuronnes
-targets=pd.get_dummies(pd.DataFrame(classes_str)).to_numpy()
-#données à utiliser pour Sklearn
+#labels to use with Sklean algorithms
 classes=[chr(int(c)) for c in classes]
 
-print("Structure des images : {}".format(np.shape(images)))
-print("Structure des lables pour Sklearn : {}".format(np.shape(classes)))
-print("Structure des lables pour OpenCV: {}".format(np.shape(labels)))
-print("Structure des lables pour TensorFlow : {}".format(np.shape(targets)))
+print("Images Shape : {}".format(np.shape(images)))
+print("Shape of labels for Sklearn : {}".format(np.shape(classes)))
+print("Shape of labels for OpenCV: {}".format(np.shape(labels)))
 
+#instanciation of models
 ovr_clf = OneVsRestClassifier(estimator=SVC(random_state=0,C=1))
 svm_clf=SVC(gamma=0.0001,C=1)
 knn_clf = KNeighborsClassifier(n_neighbors=1)
 kNearest_clf = cv2.ml.KNearest_create()
 
+#model fitting
 ovr_clf.fit(images,classes)
 svm_clf.fit(images,classes)
 knn_clf.fit(images,classes)
 kNearest_clf.train(images, cv2.ml.ROW_SAMPLE,labels)
 
-# on récupère les fichiers images contenant les digits
-digit_files = [c for c in os.listdir(data_dir + "digits") if len(c) < 10]
-# on les trie par numéro de fichier(position sur l'image code bar)
+#with all the previous models trained, we'll predict the digits values from their respective images
+# collect test data (digits stored in isbn_digits)
+digit_files = [c for c in os.listdir(data_dir + "isbn_digits") if len(c) < 10]
+# we sort the digits by x position to get the right order
 digit_files = sorted(digit_files, key=get_pos, reverse=False)
-# création des listes de valeurs à récupérer
-NN_List_Results, OVR_List_Results, SVM_List_Results, KNN_List_Results, KNN_Cv_List_Results, \
-NN_List, OVR_List, SVM_List, KNN_List, KNN_Cv_List = [], [], [], [], [], [], [], [], [], []
+# creating list of values to store the predictions
+OVR_List_Results, SVM_List_Results, KNN_List_Results, KNN_Cv_List_Results, \
+OVR_List, SVM_List, KNN_List, KNN_Cv_List = [], [], [], [], [], [], [], []
 for i, digit in enumerate(digit_files, 1):
-    # lecture des digits
-    im = cv2.imread(data_dir + "digits/" + digit)
+    # reading isbn digits
+    im = cv2.imread(data_dir + "isbn_digits/" + digit)
     try:
         imgROI, w, h, imgResised = get_ROI_to_predict(im, 20, 30)
-        # on modifie la taille de l'image rognée afin qu'elle soit conforme pour les modèles
+        # we set the size of digits images to the same values as the train data images
         imROIResized = resize(imgROI, 't', w, h)[0]
-        # on extrait les features de l'image de la zone d'intérêt
+        # we extract the features from the Region Of Interest
         imROIToPredict = imROIResized.reshape((1, w * h))
-        # nous gardons une trace de l'image non traitée pour voir la différence si on avait extrait la zone d'intérêt avant de prédire
+        # we keep the image without the ROI exctraction so that we can compare the results
         im_non_processed = imgResised.reshape((1, w * h))
 
-        # affichage des digits et des ROI représentées par des contours rectangles
+        # show the 13 digits to predict
         plt.subplot(1, 13, i)
         plt.imshow(imgResised, cmap='Greys')
         plt.axis('off')
 
-        # prédiction avec et sans extraction de ROI avec KNN de OpenCV
+        # predictions with KNN from OpenCV
         retval, Results, neigh_resp, dists = kNearest_clf.findNearest(np.float32(imROIToPredict), k=1)
         retval, Results_non_processed, neigh_resp, dists = kNearest_clf.findNearest(np.float32(im_non_processed), k=1)
-        # récupération des résultats dans des listes
+        # we collect results
         KNN_Cv_List_Results.append(str(chr(int(Results[0][0]))))
         KNN_Cv_List.append(str(chr(int(Results_non_processed[0][0]))))
 
-        # prédiction avec et sans extraction de ROI avec les modèles de Sklearn
+        # prediction with Sklearn models
         OVR_List_Results.append(str(ovr_clf.predict(imROIToPredict)[0]))
         SVM_List_Results.append(str(svm_clf.predict(imROIToPredict)[0]))
         KNN_List_Results.append(str(knn_clf.predict(imROIToPredict)[0]))
-        # récupération des résultats dans des listes
+        # we collect results
         OVR_List.append(str(ovr_clf.predict(im_non_processed)[0]))
         SVM_List.append(str(svm_clf.predict(im_non_processed)[0]))
         KNN_List.append(str(knn_clf.predict(im_non_processed)[0]))
 
     except:
-        print("Problème rencontré avec l'image")
-print('Digits à prédire :')
+        print("Error related to images")
+print('Digits to predict:')
 plt.show()
 
-print("Résultat des prédictions AVEC Extraction de ROI")
-print('     Neural Network TensorFLow : |{}|'.format('|'.join(NN_List_Results)))
+print("Prediction results WITH ROI extraction")
+
 print('     KNN OpenCV : |{}|'.format('|'.join(KNN_Cv_List_Results)))
 print('     OneVsRest Sklearn: |{}|'.format('|'.join(OVR_List_Results)))
 print('     KNN Sklearn : |{}|'.format('|'.join(KNN_List_Results)))
 print('     SVM Sklearn: |{}|'.format('|'.join(SVM_List_Results)))
+
+print("Prediction results WITHOUT ROI extraction")
+
+print('     KNN OpenCV : |{}|'.format('|'.join(KNN_Cv_List)))
+print('     OneVsRest Sklearn: |{}|'.format('|'.join(OVR_List)))
+print('     KNN Sklearn : |{}|'.format('|'.join(KNN_List)))
+print('     SVM Sklearn: |{}|'.format('|'.join(SVM_List)))
