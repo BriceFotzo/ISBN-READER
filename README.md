@@ -13,19 +13,14 @@ A script to read the ISBN number from a its back cover
 
 # **Introduction**
 
-Pour compléter notre UE Data Science Géographique nous avons eu à réaliser un mini projet. Pour ce projet, nous avons du choisir un sujet et le traiter. Ce notebook a pour objectif de vous présenter les résultats de notre travail.
+Dans le cadre de ma formation en Big Dat pour la Transformation Numérique à l'ESIGELEC, j'ai eu à réaliser un projet de Data Scienc en binôme. Le sujet étant libre, nous avons choisi de nous intéresser aux images.
 ##  
-Notre projet consiste à identifier le numéro ISBN d'un livre à partir d'une photo de sa 4ème de couverture. Pour ce faire, nous avons eu besoin de faire traitement d'image et du machine learning à l'aide des packages OpenCV et Scikit-Learn notamment. 
+Le sujet que nous avons choisi:<B> Identifier le numéro ISBN d'un livre à partir d'une photo de sa 4ème de couverture</B>. Pour ce faire, nous avons eu besoin de faire du traitement d'image et du machine learning à l'aide des packages OpenCV et Scikit-Learn notamment. 
 ##  
 Au cours de nos travaux nous avons pu constater par nous même à quel point le traitement ou processing des images peut être important pour des projets de Data science impliquant de la vision (image/vidéos). 
 ##               
-Notre notebook s'articule en 5 grandes parties :
 
+J'ai donc crée ce notebook dans l'espoir qu'il puisse donner des idées à des personnes qui s'intéressent au traitement d'images ou même qui voudraient faire ce type de projet.
 
-*  Importation des packages
-*  Définition des fonctions
-*  Traitement des images
-*  Choix et construction des modèles
-*  Reconstruction et optimisation des modèles
 
 Le chemin du notebook: NOTEBOOKS/decode_barcode.ipynb
